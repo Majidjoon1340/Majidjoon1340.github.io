@@ -223,7 +223,6 @@ body{margin:0}[hidden]{display:none!important}
         <p class="hint" style="margin:0">منو و اسم‌ها می‌مانند، فقط تعدادهای سفارش صفر می‌شوند.</p>
         <div class="row-actions" style="justify-content:flex-start">
           <button id="resetQty" class="btn" type="button">صفر کردن سفارش‌ها</button>
-          <button id="resetAll" class="btn danger" type="button">پاک کردن همه چیز</button>
         </div>
         <p id="confirmMsg" class="warnbox" hidden></p>
       </div>
@@ -277,7 +276,7 @@ body{margin:0}[hidden]{display:none!important}
 
 <script>
 (function () {
-  const KEY = "dong-v2";
+  const KEY = "dong-v3";
   const fa = new Intl.NumberFormat("fa-IR");
   const fmt = n => fa.format(Math.round(n));
   const fq = n => fa.format(n).replace(/٬/g, "");
@@ -292,8 +291,8 @@ body{margin:0}[hidden]{display:none!important}
     const people = names.map(name => ({ id: uid(), name }));
     const last = [{1:.5,8:3,9:.5,14:1},{1:.5,8:3,9:.5,14:-6},{0:.5,8:3,9:1},{2:1,5:1,8:2,9:1,14:1},{0:.5,5:.5,8:3,9:1,14:1},{2:1,8:3,9:1,14:1},{1:.5,5:.5,8:2,14:1},{1:.5,8:4,14:1}];
     const qty = {};
-    people.forEach((p, i) => { qty[p.id] = {}; for (const k in (last[i] || {})) qty[p.id][menu[k].id] = last[i][k]; });
-    return { menu, people, qty, tipMode: "flat", tip: 50, round: 0, unit: "هزار تومان", example: true };
+    people.forEach(p => { qty[p.id] = {}; });
+    return { menu, people, qty, tipMode: "flat", tip: 50, round: 0, unit: "هزار تومان", example: false };
   }
 
   let S;
@@ -517,7 +516,6 @@ body{margin:0}[hidden]{display:none!important}
     setTimeout(() => { if (pendingConfirm === btn.id) { pendingConfirm = null; msg.hidden = true; } }, 4000);
   }
   $("resetQty").addEventListener("click", e => confirmStep(e.currentTarget, "همه‌ی سفارش‌ها صفر می‌شوند", () => { S.qty = {}; S.shared = []; touch(); toast("سفارش‌ها صفر شد"); render(); }));
-  $("resetAll").addEventListener("click", e => confirmStep(e.currentTarget, "منو، اسم‌ها و سفارش‌ها همه پاک می‌شوند", () => { S = { menu: [], people: [], qty: {}, tip: S.tip, tipMode: S.tipMode, unit: S.unit, round: S.round, example: false }; save(); toast("همه چیز پاک شد"); render(); }));
   $("clearExample").addEventListener("click", () => { S.qty = {}; S.shared = []; touch(); toast("آماده برای سفارش جدید"); render(); });
 
   $("copyBtn").addEventListener("click", () => {
