@@ -115,7 +115,7 @@ h1 { margin: 0; font-size: 1.5rem; font-weight: 800; }
 .addrow input { padding: 12px; border: 1px solid var(--line); border-radius: 12px; background: var(--bg); min-width: 0; width: 100%; }
 .edit-list { display: grid; gap: 8px; }
 .edit-row { display: grid; grid-template-columns: 1fr 9rem 44px; gap: 8px; align-items: center; }
-.edit-row.p { grid-template-columns: 1fr 44px; }
+.card .edit-row.p { grid-template-columns: 44px 1fr 44px; }
 .edit-row input { padding: 10px 12px; border: 1px solid var(--line); border-radius: 10px; background: var(--bg); min-width: 0; width: 100%; }
 .x { width: 44px; height: 44px; border-radius: 10px; border: 1px solid var(--line); background: transparent; color: var(--warn); font-size: 1.3rem; }
 @media (max-width: 420px) {
@@ -125,7 +125,7 @@ h1 { margin: 0; font-size: 1.5rem; font-weight: 800; }
   .card .edit-row.m .x { width: 36px; }
 }
 .edit-row.m { grid-template-columns: 44px 1fr 8rem 44px; }
-.edit-row.p { grid-template-columns: 1fr 44px; }
+.card .edit-row.p { grid-template-columns: 44px 1fr 44px; }
 .handle { height: 44px; display: grid; place-items: center; border-radius: 10px; color: var(--muted); font-size: 1.6rem; line-height: 1; touch-action: none; cursor: grab; user-select: none; -webkit-user-select: none; }
 .edit-row.dragging { position: relative; z-index: 2; background: var(--surface); box-shadow: 0 6px 18px rgba(0,0,0,.18); border-radius: 12px; }
 .edit-row.dragging .handle { background: var(--accent); color: var(--accent-fg); cursor: grabbing; }
@@ -294,7 +294,7 @@ body{margin:0}[hidden]{display:none!important}
         </div>
         <p id="groupMsg" class="warnbox" hidden></p>
       </div>
-      <p class="hint" style="text-align:center">نسخه‌ی ۱۲</p>
+      <p class="hint" style="text-align:center">نسخه‌ی ۱۳</p>
     </div>
   </section>
 </div>
@@ -469,7 +469,8 @@ body{margin:0}[hidden]{display:none!important}
       <input id="mn-${m.id}" value="${esc(m.name)}" data-edit="mname" data-i="${m.id}" aria-label="اسم غذا">
       <input id="mp-${m.id}" class="num" inputmode="numeric" value="${fmt(m.price)}" data-edit="mprice" data-i="${m.id}" aria-label="قیمت">
       <button type="button" class="x" data-act="delitem" data-i="${m.id}" aria-label="حذف ${esc(m.name)}">×</button></div>`).join("") || '<div class="empty">منو خالی است.</div>';
-    $("peopleEdit").innerHTML = S.people.map(p => `<div class="edit-row p">
+    $("peopleEdit").innerHTML = S.people.map(p => `<div class="edit-row p" data-i="${p.id}">
+      <div class="handle" aria-label="برای جابه‌جا کردن ${esc(p.name)} نگه دار و بکش" title="نگه دار و بکش">≡</div>
       <input id="pn-${p.id}" value="${esc(p.name)}" data-edit="pname" data-p="${p.id}" aria-label="اسم">
       <button type="button" class="x" data-act="delperson" data-p="${p.id}" aria-label="حذف ${esc(p.name)}">×</button></div>`).join("") || '<div class="empty">کسی نیست.</div>';
   }
@@ -630,42 +631,46 @@ body{margin:0}[hidden]{display:none!important}
     }, "groupMsg");
   });
 
-  // drag to reorder menu items (hold the ≡ handle)
+  // drag to reorder menu items and people (hold the ≡ handle)
   let drag = null, scrollTimer = null;
-  $("menuEdit").addEventListener("pointerdown", e => {
-    const h = e.target.closest(".handle"); if (!h) return;
-    e.preventDefault();
-    const row = h.closest(".edit-row");
-    drag = { row, id: e.pointerId, y: e.clientY };
-    row.classList.add("dragging"); h.setPointerCapture(e.pointerId);
-    clearInterval(scrollTimer);
-    scrollTimer = setInterval(() => {
-      if (!drag) return;
-      const edge = 90, H = window.innerHeight - 70;
-      if (drag.y < edge) window.scrollBy(0, -12); else if (drag.y > H - edge) window.scrollBy(0, 12); else return;
-      moveTo(drag.y);
-    }, 30);
-  });
   function moveTo(y) {
-    const box = $("menuEdit"), row = drag.row;
+    const box = drag.box, row = drag.row;
     const others = [...box.querySelectorAll(".edit-row")].filter(r => r !== row);
     let before = null;
     for (const r of others) { const b = r.getBoundingClientRect(); if (y < b.top + b.height / 2) { before = r; break; } }
     if (before !== row.nextElementSibling) box.insertBefore(row, before);
   }
-  $("menuEdit").addEventListener("pointermove", e => { if (!drag || e.pointerId !== drag.id) return; drag.y = e.clientY; moveTo(e.clientY); });
   function endDrag() {
     if (!drag) return;
     clearInterval(scrollTimer);
+    const { box, field } = drag;
     drag.row.classList.remove("dragging"); drag = null;
-    const order = [...$("menuEdit").querySelectorAll(".edit-row")].map(r => r.dataset.i);
-    const byId = Object.fromEntries(S.menu.map(m => [m.id, m]));
+    const order = [...box.querySelectorAll(".edit-row")].map(r => r.dataset.i);
+    const byId = Object.fromEntries(S[field].map(m => [m.id, m]));
     const next = order.map(id => byId[id]).filter(Boolean);
-    if (next.length === S.menu.length && next.some((m, k) => m !== S.menu[k])) { S.menu = next; touch(); }
+    if (next.length === S[field].length && next.some((m, k) => m !== S[field][k])) { S[field] = next; touch(); }
     render();
   }
-  $("menuEdit").addEventListener("pointerup", endDrag);
-  $("menuEdit").addEventListener("pointercancel", endDrag);
+  [["menuEdit", "menu"], ["peopleEdit", "people"]].forEach(([boxId, field]) => {
+    const box = $(boxId);
+    box.addEventListener("pointerdown", e => {
+      const h = e.target.closest(".handle"); if (!h) return;
+      e.preventDefault();
+      const row = h.closest(".edit-row");
+      drag = { row, box, field, id: e.pointerId, y: e.clientY };
+      row.classList.add("dragging"); h.setPointerCapture(e.pointerId);
+      clearInterval(scrollTimer);
+      scrollTimer = setInterval(() => {
+        if (!drag) return;
+        const edge = 90, H = window.innerHeight - 70;
+        if (drag.y < edge) window.scrollBy(0, -12); else if (drag.y > H - edge) window.scrollBy(0, 12); else return;
+        moveTo(drag.y);
+      }, 30);
+    });
+    box.addEventListener("pointermove", e => { if (!drag || e.pointerId !== drag.id) return; drag.y = e.clientY; moveTo(e.clientY); });
+    box.addEventListener("pointerup", endDrag);
+    box.addEventListener("pointercancel", endDrag);
+  });
 
   render();
 })();
