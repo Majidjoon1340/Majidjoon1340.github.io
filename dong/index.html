@@ -120,7 +120,15 @@ h1 { margin: 0; font-size: 1.5rem; font-weight: 800; }
 .x { width: 44px; height: 44px; border-radius: 10px; border: 1px solid var(--line); background: transparent; color: var(--warn); font-size: 1.3rem; }
 @media (max-width: 420px) {
   .addrow, .edit-row { grid-template-columns: 1fr 7rem auto; }
+  .card .edit-row.m { grid-template-columns: 1fr 4.5rem 36px 36px; gap: 6px; }
+  .card .edit-row.m input { padding: 10px 8px; }
+  .card .edit-row.m .x { width: 36px; }
 }
+.edit-row.m { grid-template-columns: 1fr 8rem 40px 44px; }
+.edit-row.p { grid-template-columns: 1fr 44px; }
+.mv { display: grid; gap: 4px; }
+.mv button { height: 26px; border: 1px solid var(--line); border-radius: 8px; background: var(--bg); color: var(--fg); font-size: .8rem; line-height: 1; padding: 0; }
+.mv button:disabled { opacity: .3; }
 
 .summary { display: grid; gap: 0; }
 .srow { display: flex; justify-content: space-between; gap: 12px; padding: 14px 0; border-bottom: 1px solid var(--line); font-size: 1.25rem; }
@@ -455,9 +463,10 @@ body{margin:0}[hidden]{display:none!important}
     if (document.activeElement !== $("unit")) $("unit").value = unit();
     if (document.activeElement !== $("tip")) $("tip").value = fmt(S.tip || 0);
     if (document.activeElement !== $("round")) $("round").value = fmt(S.round || 0);
-    $("menuEdit").innerHTML = S.menu.map(m => `<div class="edit-row">
+    $("menuEdit").innerHTML = S.menu.map((m, k) => `<div class="edit-row m">
       <input id="mn-${m.id}" value="${esc(m.name)}" data-edit="mname" data-i="${m.id}" aria-label="اسم غذا">
       <input id="mp-${m.id}" class="num" inputmode="numeric" value="${fmt(m.price)}" data-edit="mprice" data-i="${m.id}" aria-label="قیمت">
+      <div class="mv"><button type="button" data-act="mup" data-i="${m.id}" aria-label="بالا بردن ${esc(m.name)}"${k === 0 ? " disabled" : ""}>▲</button><button type="button" data-act="mdown" data-i="${m.id}" aria-label="پایین بردن ${esc(m.name)}"${k === S.menu.length - 1 ? " disabled" : ""}>▼</button></div>
       <button type="button" class="x" data-act="delitem" data-i="${m.id}" aria-label="حذف ${esc(m.name)}">×</button></div>`).join("") || '<div class="empty">منو خالی است.</div>';
     $("peopleEdit").innerHTML = S.people.map(p => `<div class="edit-row p">
       <input id="pn-${p.id}" value="${esc(p.name)}" data-edit="pname" data-p="${p.id}" aria-label="اسم">
@@ -524,6 +533,10 @@ body{margin:0}[hidden]{display:none!important}
     if (act === "dec") { const v = q(p, i); setQty(p, i, v > 0 ? Math.max(0, v - 1) : v - 1 >= 0 ? v - 1 : v); }
     if (act === "half") { setQty(p, i, q(p, i) + 0.5); }
     if (act === "clearp") { S.qty[p] = {}; touch(); }
+    if (act === "mup" || act === "mdown") {
+      const k = S.menu.findIndex(m => m.id === i), j = act === "mup" ? k - 1 : k + 1;
+      if (k >= 0 && j >= 0 && j < S.menu.length) { [S.menu[k], S.menu[j]] = [S.menu[j], S.menu[k]]; touch(); }
+    }
     if (act === "delitem") { S.menu = S.menu.filter(m => m.id !== i); for (const k in S.qty) delete S.qty[k][i]; touch(); }
     if (act === "delperson") { S.people = S.people.filter(x => x.id !== p); delete S.qty[p]; S.shared = (S.shared || []).map(x => ({ ...x, people: x.people.filter(y => y !== p) })).filter(x => x.people.length); touch(); }
     render();
