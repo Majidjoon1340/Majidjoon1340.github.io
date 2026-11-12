@@ -50,6 +50,8 @@ header.top {
   position: sticky; top: env(safe-area-inset-top, 0px); z-index: 5;
   background: var(--bg); padding-block: 8px 10px; display: grid; gap: 10px;
 }
+.titlebar { display: flex; justify-content: space-between; align-items: center; gap: 12px; }
+#groupSel { flex: 0 1 auto; min-width: 0; max-width: 55%; padding: 8px 12px; border: 1px solid var(--accent); border-radius: 12px; background: var(--accent-soft); color: var(--fg); font: inherit; font-weight: 700; font-size: 1.05rem; }
 h1 { margin: 0; font-size: 1.5rem; font-weight: 800; }
 .tabs { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; background: var(--surface); border: 1px solid var(--line); border-radius: 14px; padding: 4px; }
 .tabs button { border: 0; background: transparent; padding: 10px 4px; border-radius: 10px; font-weight: 700; font-size: 1.05rem; color: var(--muted); }
@@ -148,7 +150,10 @@ body{margin:0}[hidden]{display:none!important}
 
 <div class="wrap">
   <header class="top">
-    <h1>دونگ رستوران</h1>
+    <div class="titlebar">
+      <h1>دونگ رستوران</h1>
+      <select id="groupSel" aria-label="گروه"></select>
+    </div>
     <div class="tabs" role="tablist">
       <button id="tab-setup" role="tab" aria-selected="false" data-view="setup">منو و افراد</button>
       <button id="tab-people" role="tab" aria-selected="true" data-view="people">سفارش‌ها</button>
@@ -236,7 +241,7 @@ body{margin:0}[hidden]{display:none!important}
         <div id="menuEdit" class="edit-list"></div>
       </div>
       <div class="card">
-        <h2>دوستان</h2>
+        <h2>افراد</h2>
         <div class="addrow" style="grid-template-columns:1fr auto">
           <input id="newPerson" type="text" placeholder="اسم">
           <button id="addPerson" class="btn primary" type="button">افزودن</button>
@@ -262,6 +267,25 @@ body{margin:0}[hidden]{display:none!important}
           <input id="unit" type="text">
         </div>
       </div>
+      <div class="card" id="groupsCard">
+        <h2>گروه‌ها</h2>
+        <p class="hint" style="margin:0">برای هر جمع (خانواده، دوستان و...) یک گروه جدا بساز. هر گروه منو، افراد و سفارش‌های خودش را دارد. گروه را از بالای صفحه عوض کن.</p>
+        <div class="field">
+          <label for="groupName">اسم این گروه</label>
+          <input id="groupName" type="text">
+        </div>
+        <div class="field">
+          <label for="newGroup">گروه جدید (منوی همین گروه برایش کپی می‌شود)</label>
+          <div class="addrow" style="grid-template-columns:1fr auto">
+            <input id="newGroup" type="text" placeholder="مثلاً خانواده">
+            <button id="addGroup" class="btn primary" type="button">ساختن</button>
+          </div>
+        </div>
+        <div class="row-actions" style="justify-content:flex-start">
+          <button id="delGroup" class="btn" type="button">حذف این گروه</button>
+        </div>
+        <p id="groupMsg" class="warnbox" hidden></p>
+      </div>
     </div>
   </section>
 </div>
@@ -276,7 +300,6 @@ body{margin:0}[hidden]{display:none!important}
 
 <script>
 (function () {
-  const KEY = "dong-v3";
   const fa = new Intl.NumberFormat("fa-IR");
   const fmt = n => fa.format(Math.round(n));
   const fq = n => fa.format(n).replace(/٬/g, "");
@@ -295,9 +318,19 @@ body{margin:0}[hidden]{display:none!important}
     return { menu, people, qty, tipMode: "flat", tip: 50, round: 0, unit: "هزار تومان", example: false };
   }
 
+  const GKEY = "dong-groups";
+  let G = null;
+  try { G = JSON.parse(localStorage.getItem(GKEY)); } catch (e) {}
+  if (!G || !Array.isArray(G.list) || !G.list.length) G = { list: [{ id: "main", name: "دوستان", key: "dong-v3" }], cur: "main" };
+  const saveG = () => { try { localStorage.setItem(GKEY, JSON.stringify(G)); } catch (e) {} };
+  const curG = () => G.list.find(g => g.id === G.cur) || G.list[0];
+  let KEY = curG().key;
   let S;
-  try { S = JSON.parse(localStorage.getItem(KEY)); } catch (e) { S = null; }
-  if (!S || !Array.isArray(S.menu)) S = sample();
+  function loadS() {
+    try { S = JSON.parse(localStorage.getItem(KEY)); } catch (e) { S = null; }
+    if (!S || !Array.isArray(S.menu)) S = KEY === "dong-v3" ? sample() : { menu: [], people: [], qty: {}, shared: [], tipMode: "flat", tip: 50, round: 0, unit: "هزار تومان" };
+  }
+  loadS();
   const save = () => { try { localStorage.setItem(KEY, JSON.stringify(S)); } catch (e) {} };
 
   let view = "people", openId = null, query = "";
@@ -438,7 +471,22 @@ body{margin:0}[hidden]{display:none!important}
     $("exampleNote").hidden = !S.example;
   }
 
+  function renderGroups() {
+    const sel = $("groupSel");
+    sel.innerHTML = G.list.map(g => `<option value="${g.id}">${esc(g.name)}</option>`).join("") + '<option value="__new">+ گروه جدید</option>';
+    sel.value = curG().id;
+    if (document.activeElement !== $("groupName")) $("groupName").value = curG().name;
+    $("delGroup").disabled = G.list.length < 2;
+    $("delGroup").title = G.list.length < 2 ? "دست‌کم یک گروه باید بماند" : "";
+  }
+  function switchGroup(id) {
+    G.cur = id; saveG(); KEY = curG().key; loadS();
+    openId = null; query = ""; $("search").value = ""; closeShared(); render();
+    toast("گروه: " + curG().name);
+  }
+
   function render() {
+    renderGroups();
     ["people", "summary", "setup"].forEach(v => {
       $("view-" + v).hidden = v !== view;
       $("tab-" + v).setAttribute("aria-selected", v === view);
@@ -509,8 +557,8 @@ body{margin:0}[hidden]{display:none!important}
   $("newItemName").addEventListener("keydown", e => { if (e.key === "Enter") $("newItemPrice").focus(); });
   $("newPerson").addEventListener("keydown", e => { if (e.key === "Enter") addPerson(); });
 
-  function confirmStep(btn, label, run) {
-    const msg = $("confirmMsg");
+  function confirmStep(btn, label, run, msgId) {
+    const msg = $(msgId || "confirmMsg");
     if (pendingConfirm === btn.id) { pendingConfirm = null; msg.hidden = true; run(); return; }
     pendingConfirm = btn.id; msg.textContent = label + " — برای تأیید دوباره بزن."; msg.hidden = false;
     setTimeout(() => { if (pendingConfirm === btn.id) { pendingConfirm = null; msg.hidden = true; } }, 4000);
@@ -548,6 +596,28 @@ body{margin:0}[hidden]{display:none!important}
     const i = S.shared.findIndex(x => x.id === shEdit);
     if (i >= 0) S.shared[i] = rec; else S.shared.push(rec);
     touch(); closeShared(); toast("غذای مشترک ثبت شد"); render();
+  });
+
+  $("groupSel").addEventListener("change", e => {
+    if (e.target.value === "__new") { e.target.value = curG().id; view = "setup"; render(); $("groupsCard").scrollIntoView({ block: "center" }); $("newGroup").focus(); return; }
+    switchGroup(e.target.value);
+  });
+  $("groupName").addEventListener("change", e => { const n = e.target.value.trim(); if (n) { curG().name = n; saveG(); renderGroups(); } });
+  function addGroup() {
+    const name = $("newGroup").value.trim(); if (!name) { $("newGroup").focus(); return; }
+    const g = { id: uid(), name, key: "dong-g-" + uid() };
+    const init = { menu: S.menu.map(m => ({ ...m })), people: [], qty: {}, shared: [], tipMode: S.tipMode, tip: S.tip, round: S.round, unit: S.unit };
+    try { localStorage.setItem(g.key, JSON.stringify(init)); } catch (e) {}
+    G.list.push(g); $("newGroup").value = ""; switchGroup(g.id);
+  }
+  $("addGroup").addEventListener("click", addGroup);
+  $("newGroup").addEventListener("keydown", e => { if (e.key === "Enter") addGroup(); });
+  $("delGroup").addEventListener("click", e => {
+    if (G.list.length < 2) return;
+    confirmStep(e.currentTarget, "گروه «" + curG().name + "» با همه‌ی اطلاعاتش حذف می‌شود", () => {
+      const g = curG(); try { localStorage.removeItem(g.key); } catch (err) {}
+      G.list = G.list.filter(x => x.id !== g.id); switchGroup(G.list[0].id);
+    }, "groupMsg");
   });
 
   render();
