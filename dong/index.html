@@ -116,11 +116,12 @@ h1 { margin: 0; font-size: 1.5rem; font-weight: 800; }
 .edit-list { display: grid; gap: 8px; }
 .edit-row { display: grid; grid-template-columns: 1fr 9rem 44px; gap: 8px; align-items: center; }
 .card .edit-row.p { grid-template-columns: 44px 1fr 44px; }
+.edit-row input[data-edit="mprice"] { font-size: 1.3rem; font-weight: 700; }
 .edit-row input { padding: 10px 12px; border: 1px solid var(--line); border-radius: 10px; background: var(--bg); min-width: 0; width: 100%; }
 .x { width: 44px; height: 44px; border-radius: 10px; border: 1px solid var(--line); background: transparent; color: var(--warn); font-size: 1.3rem; }
 @media (max-width: 420px) {
   .addrow, .edit-row { grid-template-columns: 1fr 7rem auto; }
-  .card .edit-row.m { grid-template-columns: 40px 1fr 4.5rem 36px; gap: 6px; }
+  .card .edit-row.m { grid-template-columns: 40px 1fr 5.2rem 36px; gap: 6px; }
   .card .edit-row.m input { padding: 10px 8px; }
   .card .edit-row.m .x { width: 36px; }
 }
@@ -294,7 +295,7 @@ body{margin:0}[hidden]{display:none!important}
         </div>
         <p id="groupMsg" class="warnbox" hidden></p>
       </div>
-      <p class="hint" style="text-align:center">نسخه‌ی ۱۳</p>
+      <p class="hint" style="text-align:center">نسخه‌ی ۱۴</p>
     </div>
   </section>
 </div>
@@ -451,7 +452,7 @@ body{margin:0}[hidden]{display:none!important}
       <div><span>جمع غذاها</span><span class="num">${fmt(t.sub)}</span></div>
       <div><span>${tipText()}</span><span class="num">${fmt(t.withTip - t.sub)}</span></div>
       <div class="big"><span>جمع صورتحساب</span><span class="num">${fmt(t.withTip)}</span></div>
-      ${S.round > 0 ? `<div><span>جمع پولی که جمع می‌شود (با گرد کردن)</span><span class="num">${fmt(t.collected)}</span></div>` : ""}`;
+      ${S.round > 0 ? `<div class="big"><span>جمع صورتحساب (با گرد کردن)</span><span class="num">${fmt(t.collected)}</span></div>` : ""}`;
     const lines = ["دُنگ امشب", ...rows.filter(p => share(p.id) > 0).map(p => `${p.name}: ${fmt(share(p.id))} ${unit()}`), "", `جمع کل با انعام: ${fmt(t.withTip)} ${unit()}`];
     $("copyText").value = lines.join("\n");
   }
