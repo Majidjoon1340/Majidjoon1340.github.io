@@ -120,15 +120,15 @@ h1 { margin: 0; font-size: 1.5rem; font-weight: 800; }
 .x { width: 44px; height: 44px; border-radius: 10px; border: 1px solid var(--line); background: transparent; color: var(--warn); font-size: 1.3rem; }
 @media (max-width: 420px) {
   .addrow, .edit-row { grid-template-columns: 1fr 7rem auto; }
-  .card .edit-row.m { grid-template-columns: 1fr 4.5rem 36px 36px; gap: 6px; }
+  .card .edit-row.m { grid-template-columns: 40px 1fr 4.5rem 36px; gap: 6px; }
   .card .edit-row.m input { padding: 10px 8px; }
   .card .edit-row.m .x { width: 36px; }
 }
-.edit-row.m { grid-template-columns: 1fr 8rem 40px 44px; }
+.edit-row.m { grid-template-columns: 44px 1fr 8rem 44px; }
 .edit-row.p { grid-template-columns: 1fr 44px; }
-.mv { display: grid; gap: 4px; }
-.mv button { height: 26px; border: 1px solid var(--line); border-radius: 8px; background: var(--bg); color: var(--fg); font-size: .8rem; line-height: 1; padding: 0; }
-.mv button:disabled { opacity: .3; }
+.handle { height: 44px; display: grid; place-items: center; border-radius: 10px; color: var(--muted); font-size: 1.6rem; line-height: 1; touch-action: none; cursor: grab; user-select: none; -webkit-user-select: none; }
+.edit-row.dragging { position: relative; z-index: 2; background: var(--surface); box-shadow: 0 6px 18px rgba(0,0,0,.18); border-radius: 12px; }
+.edit-row.dragging .handle { background: var(--accent); color: var(--accent-fg); cursor: grabbing; }
 
 .summary { display: grid; gap: 0; }
 .srow { display: flex; justify-content: space-between; gap: 12px; padding: 14px 0; border-bottom: 1px solid var(--line); font-size: 1.25rem; }
@@ -294,7 +294,7 @@ body{margin:0}[hidden]{display:none!important}
         </div>
         <p id="groupMsg" class="warnbox" hidden></p>
       </div>
-      <p class="hint" style="text-align:center">نسخه‌ی ۱۱</p>
+      <p class="hint" style="text-align:center">نسخه‌ی ۱۲</p>
     </div>
   </section>
 </div>
@@ -464,10 +464,10 @@ body{margin:0}[hidden]{display:none!important}
     if (document.activeElement !== $("unit")) $("unit").value = unit();
     if (document.activeElement !== $("tip")) $("tip").value = fmt(S.tip || 0);
     if (document.activeElement !== $("round")) $("round").value = fmt(S.round || 0);
-    $("menuEdit").innerHTML = S.menu.map((m, k) => `<div class="edit-row m">
+    $("menuEdit").innerHTML = S.menu.map(m => `<div class="edit-row m" data-i="${m.id}">
+      <div class="handle" aria-label="برای جابه‌جا کردن ${esc(m.name)} نگه دار و بکش" title="نگه دار و بکش">≡</div>
       <input id="mn-${m.id}" value="${esc(m.name)}" data-edit="mname" data-i="${m.id}" aria-label="اسم غذا">
       <input id="mp-${m.id}" class="num" inputmode="numeric" value="${fmt(m.price)}" data-edit="mprice" data-i="${m.id}" aria-label="قیمت">
-      <div class="mv"><button type="button" data-act="mup" data-i="${m.id}" aria-label="بالا بردن ${esc(m.name)}"${k === 0 ? " disabled" : ""}>▲</button><button type="button" data-act="mdown" data-i="${m.id}" aria-label="پایین بردن ${esc(m.name)}"${k === S.menu.length - 1 ? " disabled" : ""}>▼</button></div>
       <button type="button" class="x" data-act="delitem" data-i="${m.id}" aria-label="حذف ${esc(m.name)}">×</button></div>`).join("") || '<div class="empty">منو خالی است.</div>';
     $("peopleEdit").innerHTML = S.people.map(p => `<div class="edit-row p">
       <input id="pn-${p.id}" value="${esc(p.name)}" data-edit="pname" data-p="${p.id}" aria-label="اسم">
@@ -534,10 +534,6 @@ body{margin:0}[hidden]{display:none!important}
     if (act === "dec") { const v = q(p, i); setQty(p, i, v > 0 ? Math.max(0, v - 1) : v - 1 >= 0 ? v - 1 : v); }
     if (act === "half") { setQty(p, i, q(p, i) + 0.5); }
     if (act === "clearp") { S.qty[p] = {}; touch(); }
-    if (act === "mup" || act === "mdown") {
-      const k = S.menu.findIndex(m => m.id === i), j = act === "mup" ? k - 1 : k + 1;
-      if (k >= 0 && j >= 0 && j < S.menu.length) { [S.menu[k], S.menu[j]] = [S.menu[j], S.menu[k]]; touch(); }
-    }
     if (act === "delitem") { S.menu = S.menu.filter(m => m.id !== i); for (const k in S.qty) delete S.qty[k][i]; touch(); }
     if (act === "delperson") { S.people = S.people.filter(x => x.id !== p); delete S.qty[p]; S.shared = (S.shared || []).map(x => ({ ...x, people: x.people.filter(y => y !== p) })).filter(x => x.people.length); touch(); }
     render();
@@ -633,6 +629,43 @@ body{margin:0}[hidden]{display:none!important}
       G.list = G.list.filter(x => x.id !== g.id); switchGroup(G.list[0].id);
     }, "groupMsg");
   });
+
+  // drag to reorder menu items (hold the ≡ handle)
+  let drag = null, scrollTimer = null;
+  $("menuEdit").addEventListener("pointerdown", e => {
+    const h = e.target.closest(".handle"); if (!h) return;
+    e.preventDefault();
+    const row = h.closest(".edit-row");
+    drag = { row, id: e.pointerId, y: e.clientY };
+    row.classList.add("dragging"); h.setPointerCapture(e.pointerId);
+    clearInterval(scrollTimer);
+    scrollTimer = setInterval(() => {
+      if (!drag) return;
+      const edge = 90, H = window.innerHeight - 70;
+      if (drag.y < edge) window.scrollBy(0, -12); else if (drag.y > H - edge) window.scrollBy(0, 12); else return;
+      moveTo(drag.y);
+    }, 30);
+  });
+  function moveTo(y) {
+    const box = $("menuEdit"), row = drag.row;
+    const others = [...box.querySelectorAll(".edit-row")].filter(r => r !== row);
+    let before = null;
+    for (const r of others) { const b = r.getBoundingClientRect(); if (y < b.top + b.height / 2) { before = r; break; } }
+    if (before !== row.nextElementSibling) box.insertBefore(row, before);
+  }
+  $("menuEdit").addEventListener("pointermove", e => { if (!drag || e.pointerId !== drag.id) return; drag.y = e.clientY; moveTo(e.clientY); });
+  function endDrag() {
+    if (!drag) return;
+    clearInterval(scrollTimer);
+    drag.row.classList.remove("dragging"); drag = null;
+    const order = [...$("menuEdit").querySelectorAll(".edit-row")].map(r => r.dataset.i);
+    const byId = Object.fromEntries(S.menu.map(m => [m.id, m]));
+    const next = order.map(id => byId[id]).filter(Boolean);
+    if (next.length === S.menu.length && next.some((m, k) => m !== S.menu[k])) { S.menu = next; touch(); }
+    render();
+  }
+  $("menuEdit").addEventListener("pointerup", endDrag);
+  $("menuEdit").addEventListener("pointercancel", endDrag);
 
   render();
 })();
