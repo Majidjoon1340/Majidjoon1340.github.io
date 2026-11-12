@@ -1,0 +1,560 @@
+<!doctype html>
+<html lang="fa" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>دونگ رستوران</title>
+<link rel="manifest" href="manifest.webmanifest">
+<meta name="theme-color" content="#0f7a5a">
+<link rel="icon" href="icon-192.png">
+<link rel="apple-touch-icon" href="icon-192.png">
+<style>
+/* Layout: one column, big tappable person cards; sticky search on top, sticky total bar at bottom */
+:root {
+  --bg: #f3f5f2;
+  --surface: #ffffff;
+  --fg: #1d2420;
+  --muted: #5f6b64;
+  --line: #dde3de;
+  --accent: #0f7a5a;
+  --accent-soft: #e2f2ea;
+  --accent-fg: #ffffff;
+  --warn: #b4441f;
+  --font: "Vazirmatn", "Vazir", "IRANSans", system-ui, Tahoma, "Segoe UI", sans-serif;
+}
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) {
+  --bg: #121614; --surface: #1b211e; --fg: #e9eeea; --muted: #9aa69f; --line: #2c3530;
+  --accent: #3fbf8f; --accent-soft: #1d3329; --accent-fg: #0b1a13; --warn: #f08a63; color-scheme: dark } }
+:root[data-theme="dark"] {
+  --bg: #121614; --surface: #1b211e; --fg: #e9eeea; --muted: #9aa69f; --line: #2c3530;
+  --accent: #3fbf8f; --accent-soft: #1d3329; --accent-fg: #0b1a13; --warn: #f08a63; color-scheme: dark }
+
+* { box-sizing: border-box; }
+body {
+  background: var(--bg); color: var(--fg); font-family: var(--font);
+  font-size: 18px; line-height: 1.6; direction: rtl;
+}
+body::before { content: ""; position: fixed; inset: 0 0 auto; height: env(safe-area-inset-top, 0px); z-index: 10; background: var(--bg); }
+.wrap {
+  max-width: 640px; margin: 0 auto;
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+  padding-block: 12px 120px;
+}
+button, input { font: inherit; color: inherit; }
+button { cursor: pointer; }
+:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
+.num { font-variant-numeric: tabular-nums; }
+
+header.top {
+  position: sticky; top: env(safe-area-inset-top, 0px); z-index: 5;
+  background: var(--bg); padding-block: 8px 10px; display: grid; gap: 10px;
+}
+h1 { margin: 0; font-size: 1.5rem; font-weight: 800; }
+.tabs { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; background: var(--surface); border: 1px solid var(--line); border-radius: 14px; padding: 4px; }
+.tabs button { border: 0; background: transparent; padding: 10px 4px; border-radius: 10px; font-weight: 700; font-size: 1.05rem; color: var(--muted); }
+.tabs button[aria-selected="true"] { background: var(--accent); color: var(--accent-fg); }
+
+.search { width: 100%; padding: 14px 16px; font-size: 1.15rem; border-radius: 14px; border: 1px solid var(--line); background: var(--surface); }
+.hint { color: var(--muted); font-size: .95rem; margin: 4px 0 0; }
+.example { background: var(--accent-soft); color: var(--fg); border-radius: 12px; padding: 10px 14px; font-size: .95rem; display: flex; gap: 10px; align-items: center; justify-content: space-between; flex-wrap: wrap; }
+.example button { border: 0; background: transparent; color: var(--accent); font-weight: 700; text-decoration: underline; padding: 4px; }
+
+.list { display: grid; gap: 12px; margin-top: 12px; }
+.person { background: var(--surface); border: 1px solid var(--line); border-radius: 16px; overflow: hidden; }
+.person-head { width: 100%; display: flex; align-items: center; gap: 12px; padding: 16px; border: 0; background: transparent; text-align: right; }
+.avatar { flex: none; width: 48px; height: 48px; border-radius: 50%; background: var(--accent-soft); color: var(--accent); display: grid; place-items: center; font-weight: 800; font-size: 1.3rem; }
+.pname { flex: 1; min-width: 0; font-size: 1.35rem; font-weight: 700; overflow-wrap: anywhere; }
+.pname small { display: block; font-size: .9rem; font-weight: 400; color: var(--muted); }
+.ptotal { font-size: 1.3rem; font-weight: 800; white-space: nowrap; }
+.ptotal small { display: block; font-size: .8rem; font-weight: 400; color: var(--muted); text-align: left; }
+.chev { flex: none; color: var(--muted); transition: transform .15s; }
+.person.open .chev { transform: rotate(180deg); }
+.items { border-top: 1px solid var(--line); padding: 4px 16px 12px; display: grid; }
+.item { display: flex; align-items: center; gap: 10px; padding: 10px 0; border-bottom: 1px dashed var(--line); }
+.item:last-child { border-bottom: 0; }
+.item .iname { flex: 1; min-width: 0; }
+.item .iname b { display: block; font-weight: 500; }
+.item .iname span { color: var(--muted); font-size: .9rem; }
+.item.has .iname b { font-weight: 800; }
+.stepper { display: flex; align-items: center; gap: 6px; flex: none; }
+.stepper button { width: 44px; height: 44px; border-radius: 12px; border: 1px solid var(--line); background: var(--bg); font-size: 1.5rem; font-weight: 700; line-height: 1; }
+.stepper button.plus { background: var(--accent); color: var(--accent-fg); border-color: var(--accent); }
+.stepper button.half { font-size: 1.2rem; }
+.item.neg .stepper input { color: var(--warn); }
+.stepper input { width: 46px; text-align: center; font-size: 1.3rem; font-weight: 800; border: 0; background: transparent; padding: 0; }
+.row-actions { display: flex; justify-content: space-between; gap: 8px; padding-top: 10px; flex-wrap: wrap; }
+
+.shared-card { margin-top: 12px; }
+.shared-head { display: flex; justify-content: space-between; align-items: center; gap: 8px; }
+.shared-form { display: grid; gap: 12px; border-top: 1px solid var(--line); padding-top: 12px; }
+.shared-form select { padding: 12px 14px; border: 1px solid var(--line); border-radius: 12px; background: var(--bg); font: inherit; font-size: 1.1rem; width: 100%; color: var(--fg); }
+.field .stepper input { width: 60px; padding: 0; border: 0; background: transparent; }
+.chips { display: flex; flex-wrap: wrap; gap: 8px; }
+.chip { border: 1px solid var(--line); background: var(--bg); border-radius: 999px; padding: 8px 16px; font-size: 1.05rem; }
+.chip[aria-pressed="true"] { background: var(--accent); color: var(--accent-fg); border-color: var(--accent); font-weight: 700; }
+.shared-list { display: grid; }
+.sh-row { display: flex; align-items: center; gap: 10px; padding: 10px 0; border-top: 1px dashed var(--line); }
+.sh-row .txt { flex: 1; min-width: 0; }
+.sh-row .txt b { display: block; }
+.sh-row .txt span { color: var(--muted); font-size: .92rem; }
+.shared-line { color: var(--muted); font-size: .95rem; padding: 10px 0 0; }
+.btn { border: 1px solid var(--line); background: var(--surface); border-radius: 12px; padding: 10px 16px; font-weight: 700; }
+.btn.primary { background: var(--accent); color: var(--accent-fg); border-color: var(--accent); }
+.btn.danger { color: var(--warn); }
+.btn.small { padding: 6px 12px; font-size: .95rem; }
+
+.card { background: var(--surface); border: 1px solid var(--line); border-radius: 16px; padding: 16px; display: grid; gap: 12px; }
+.card h2 { margin: 0; font-size: 1.2rem; }
+.field { display: grid; gap: 4px; }
+.field label { font-size: .95rem; color: var(--muted); }
+.field input { padding: 12px 14px; border: 1px solid var(--line); border-radius: 12px; background: var(--bg); font-size: 1.1rem; width: 100%; }
+.addrow { display: grid; grid-template-columns: 1fr 9rem auto; gap: 8px; }
+.addrow input { padding: 12px; border: 1px solid var(--line); border-radius: 12px; background: var(--bg); min-width: 0; width: 100%; }
+.edit-list { display: grid; gap: 8px; }
+.edit-row { display: grid; grid-template-columns: 1fr 9rem 44px; gap: 8px; align-items: center; }
+.edit-row.p { grid-template-columns: 1fr 44px; }
+.edit-row input { padding: 10px 12px; border: 1px solid var(--line); border-radius: 10px; background: var(--bg); min-width: 0; width: 100%; }
+.x { width: 44px; height: 44px; border-radius: 10px; border: 1px solid var(--line); background: transparent; color: var(--warn); font-size: 1.3rem; }
+@media (max-width: 420px) {
+  .addrow, .edit-row { grid-template-columns: 1fr 7rem auto; }
+}
+
+.summary { display: grid; gap: 0; }
+.srow { display: flex; justify-content: space-between; gap: 12px; padding: 14px 0; border-bottom: 1px solid var(--line); font-size: 1.25rem; }
+.srow:last-child { border-bottom: 0; }
+.srow b { font-weight: 800; }
+.meta { display: grid; gap: 4px; color: var(--muted); font-size: 1rem; }
+.meta div { display: flex; justify-content: space-between; }
+.meta .big { color: var(--fg); font-weight: 800; font-size: 1.2rem; }
+.warnbox { color: var(--warn); font-size: .95rem; }
+
+.bar {
+  position: fixed; inset: auto 0 0 0; z-index: 6; background: var(--surface); border-top: 1px solid var(--line);
+  padding-bottom: max(12px, env(safe-area-inset-bottom, 0px)); padding-top: 12px;
+  padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px));
+}
+.bar-in { max-width: 640px; margin: 0 auto; display: flex; justify-content: space-between; align-items: center; gap: 12px; }
+.bar-in .lbl { color: var(--muted); font-size: .95rem; }
+.bar-in .val { font-size: 1.4rem; font-weight: 800; }
+.toast { position: fixed; left: 50%; transform: translateX(-50%); bottom: calc(90px + env(safe-area-inset-bottom, 0px)); background: var(--fg); color: var(--bg); padding: 10px 18px; border-radius: 12px; z-index: 20; font-size: 1rem; }
+.empty { color: var(--muted); text-align: center; padding: 24px 8px; }
+textarea.copybox { width: 100%; min-height: 160px; border: 1px solid var(--line); border-radius: 12px; padding: 12px; background: var(--bg); font: inherit; font-size: 1rem; }
+@media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
+body{margin:0}[hidden]{display:none!important}
+</style>
+</head>
+<body>
+
+<div class="wrap">
+  <header class="top">
+    <h1>دونگ رستوران</h1>
+    <div class="tabs" role="tablist">
+      <button id="tab-setup" role="tab" aria-selected="false" data-view="setup">منو و افراد</button>
+      <button id="tab-people" role="tab" aria-selected="true" data-view="people">سفارش‌ها</button>
+      <button id="tab-summary" role="tab" aria-selected="false" data-view="summary">جمع‌بندی</button>
+    </div>
+    <div id="searchWrap">
+      <input id="search" class="search" type="search" placeholder="جستجوی اسم…" autocomplete="off">
+    </div>
+  </header>
+
+  <div id="exampleNote" class="example" hidden>
+    <span>تعدادها نمونه‌اند. برای شروع، سفارش‌ها را صفر کن.</span>
+    <button id="clearExample" type="button">صفر کردن نمونه‌ها</button>
+  </div>
+
+  <section id="view-people">
+    <div class="card shared-card" id="sharedCard">
+      <div class="shared-head">
+        <h2>غذای مشترک</h2>
+        <button id="sharedOpen" class="btn small primary" type="button">+ افزودن</button>
+      </div>
+      <p class="hint" style="margin:0">مثلاً ۳ دیزی که ۴ نفر با هم خورده‌اند. قیمت بین همان چند نفر مساوی تقسیم می‌شود.</p>
+      <div id="sharedForm" class="shared-form" hidden>
+        <div class="field">
+          <label for="shItem">کدام غذا؟</label>
+          <select id="shItem"></select>
+        </div>
+        <div class="field">
+          <label for="shCount">چند تا؟</label>
+          <div class="stepper">
+            <button type="button" id="shDec" aria-label="کم کردن">−</button>
+            <input id="shCount" class="num" inputmode="decimal" value="۱">
+            <button type="button" id="shInc" class="plus" aria-label="اضافه کردن">+</button>
+          </div>
+        </div>
+        <div class="field">
+          <label>چه کسانی خوردند؟ <span id="shPick" class="num"></span></label>
+          <div id="shPeople" class="chips"></div>
+        </div>
+        <p id="shPreview" class="hint num" style="margin:0"></p>
+        <div class="row-actions" style="justify-content:flex-start">
+          <button id="shSave" class="btn primary" type="button">ثبت</button>
+          <button id="shCancel" class="btn" type="button">انصراف</button>
+        </div>
+      </div>
+      <div id="sharedList" class="shared-list"></div>
+    </div>
+    <div id="people" class="list"></div>
+  </section>
+
+  <section id="view-summary" hidden>
+    <div class="list">
+      <div class="card">
+        <h2>سهم هر نفر</h2>
+        <div id="summaryList" class="summary"></div>
+      </div>
+      <div class="card">
+        <div id="summaryMeta" class="meta"></div>
+      </div>
+      <div class="card">
+        <h2>متن برای فرستادن در گروه</h2>
+        <textarea id="copyText" class="copybox" readonly></textarea>
+        <div><button id="copyBtn" class="btn primary" type="button">کپی متن</button></div>
+      </div>
+    </div>
+  </section>
+
+  <section id="view-setup" hidden>
+    <div class="list">
+      <div class="card">
+        <h2>شب جدید</h2>
+        <p class="hint" style="margin:0">منو و اسم‌ها می‌مانند، فقط تعدادهای سفارش صفر می‌شوند.</p>
+        <div class="row-actions" style="justify-content:flex-start">
+          <button id="resetQty" class="btn" type="button">صفر کردن سفارش‌ها</button>
+          <button id="resetAll" class="btn danger" type="button">پاک کردن همه چیز</button>
+        </div>
+        <p id="confirmMsg" class="warnbox" hidden></p>
+      </div>
+      <div class="card">
+        <h2>منوی رستوران</h2>
+        <div class="addrow">
+          <input id="newItemName" type="text" placeholder="اسم غذا">
+          <input id="newItemPrice" type="text" inputmode="numeric" placeholder="قیمت">
+          <button id="addItem" class="btn primary" type="button">افزودن</button>
+        </div>
+        <div id="menuEdit" class="edit-list"></div>
+      </div>
+      <div class="card">
+        <h2>دوستان</h2>
+        <div class="addrow" style="grid-template-columns:1fr auto">
+          <input id="newPerson" type="text" placeholder="اسم">
+          <button id="addPerson" class="btn primary" type="button">افزودن</button>
+        </div>
+        <div id="peopleEdit" class="edit-list"></div>
+      </div>
+      <div class="card">
+        <h2>انعام و گرد کردن</h2>
+        <div class="field">
+          <div style="display:flex;gap:16px;flex-wrap:wrap">
+            <label><input type="radio" name="tipMode" id="tm-flat" value="flat"> مبلغ ثابت برای هر نفر</label>
+            <label><input type="radio" name="tipMode" id="tm-pct" value="percent"> درصدی از سفارش</label>
+          </div>
+          <label for="tip" id="tipLabel">درصد انعام / سرویس</label>
+          <input id="tip" type="text" inputmode="decimal">
+        </div>
+        <div class="field">
+          <label for="round">گرد کردن سهم هر نفر به بالا (۰ یعنی بدون گرد کردن)</label>
+          <input id="round" type="text" inputmode="numeric">
+        </div>
+        <div class="field">
+          <label for="unit">واحد قیمت‌ها</label>
+          <input id="unit" type="text">
+        </div>
+      </div>
+    </div>
+  </section>
+</div>
+
+<div class="bar">
+  <div class="bar-in">
+    <div><div class="lbl">جمع کل با انعام</div><div id="barTotal" class="val num">۰</div></div>
+    <div style="text-align:left"><div class="lbl">بدون انعام</div><div id="barSub" class="num" style="font-weight:700">۰</div></div>
+  </div>
+</div>
+<div id="toast" class="toast" hidden></div>
+
+<script>
+(function () {
+  const KEY = "dong-v2";
+  const fa = new Intl.NumberFormat("fa-IR");
+  const fmt = n => fa.format(Math.round(n));
+  const fq = n => fa.format(n).replace(/٬/g, "");
+  const unit = () => S.unit || "تومان";
+  const toLatin = s => String(s ?? "").replace(/[۰-۹]/g, d => "۰۱۲۳۴۵۶۷۸۹".indexOf(d)).replace(/[٠-٩]/g, d => "٠١٢٣٤٥٦٧٨٩".indexOf(d)).replace(/[٬,،\s]/g, "").replace(/٫/g, ".");
+  const parseNum = s => { const n = parseFloat(toLatin(s)); return isFinite(n) ? n : 0; };
+  const uid = () => Math.random().toString(36).slice(2, 9);
+
+  function sample() {
+    const menu = [["جوجه با اس",720],["دیزی",700],["ماهی",720],["برنج",130],["سبزی پلو",200],["نیمرو خرما",300],["نیمرو",200],["نرگسی",150],["چای",70],["نوشابه",100],["دمنوش",40],["آب انار",120],["عدسی",180],["کاپوچینو",80],["خرما",110]].map(([name, price]) => ({ id: uid(), name, price }));
+    const names = ["مسلم","جعفر","شاهین","رشید","پرویز","مجید","اصغر","فرشاد","هوشی","حمید","محمد"];
+    const people = names.map(name => ({ id: uid(), name }));
+    const last = [{1:.5,8:3,9:.5,14:1},{1:.5,8:3,9:.5,14:-6},{0:.5,8:3,9:1},{2:1,5:1,8:2,9:1,14:1},{0:.5,5:.5,8:3,9:1,14:1},{2:1,8:3,9:1,14:1},{1:.5,5:.5,8:2,14:1},{1:.5,8:4,14:1}];
+    const qty = {};
+    people.forEach((p, i) => { qty[p.id] = {}; for (const k in (last[i] || {})) qty[p.id][menu[k].id] = last[i][k]; });
+    return { menu, people, qty, tipMode: "flat", tip: 50, round: 0, unit: "هزار تومان", example: true };
+  }
+
+  let S;
+  try { S = JSON.parse(localStorage.getItem(KEY)); } catch (e) { S = null; }
+  if (!S || !Array.isArray(S.menu)) S = sample();
+  const save = () => { try { localStorage.setItem(KEY, JSON.stringify(S)); } catch (e) {} };
+
+  let view = "people", openId = null, query = "";
+  const $ = id => document.getElementById(id);
+  const esc = s => String(s).replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+  const q = (pid, iid) => (S.qty[pid] && S.qty[pid][iid]) || 0;
+  const priceOf = id => (S.menu.find(m => m.id === id) || { price: 0 }).price;
+
+  const shares = pid => (S.shared || []).filter(x => x.people.includes(pid) && S.menu.some(m => m.id === x.item));
+  const per = x => x.count / x.people.length;
+  function subtotal(pid) {
+    let t = 0; const row = S.qty[pid] || {};
+    for (const iid in row) t += row[iid] * priceOf(iid);
+    for (const x of shares(pid)) t += per(x) * priceOf(x.item);
+    return t;
+  }
+  function tipOf(pid) {
+    const sub = subtotal(pid);
+    if (S.tipMode === "flat") return sub !== 0 ? (S.tip || 0) : 0;
+    return sub * (S.tip || 0) / 100;
+  }
+  function share(pid) {
+    const raw = subtotal(pid) + tipOf(pid);
+    const r = S.round || 0;
+    return r > 0 ? Math.ceil(raw / r) * r : raw;
+  }
+  function count(pid) { let c = 0; const row = S.qty[pid] || {}; for (const k in row) if (row[k] > 0 && S.menu.some(m => m.id === k)) c += row[k]; for (const x of shares(pid)) c += per(x); return Math.round(c * 100) / 100; }
+  const nameOf = id => (S.menu.find(m => m.id === id) || { name: "؟" }).name;
+  const pName = id => (S.people.find(x => x.id === id) || { name: "؟" }).name;
+
+  let shSel = [], shEdit = null;
+  function renderShared() {
+    const list = (S.shared || []).filter(x => S.menu.some(m => m.id === x.item));
+    $("sharedList").innerHTML = list.map(x => `<div class="sh-row">
+      <div class="txt"><b>${fq(x.count)} ${esc(nameOf(x.item))} بین ${fq(x.people.length)} نفر</b>
+      <span class="num">${x.people.map(id => esc(pName(id))).join("، ")} · هر نفر ${fmt(per(x) * priceOf(x.item))}</span></div>
+      <button type="button" class="btn small" data-act="shedit" data-s="${x.id}">ویرایش</button>
+      <button type="button" class="x" data-act="shdel" data-s="${x.id}" aria-label="حذف">×</button></div>`).join("");
+    if (!$("sharedForm").hidden) renderSharedForm();
+  }
+  function renderSharedForm() {
+    const sel = $("shItem");
+    if (!sel.options.length || sel.dataset.v !== S.menu.map(m => m.id + m.name).join()) {
+      const keep = sel.value;
+      sel.innerHTML = S.menu.map(m => `<option value="${m.id}">${esc(m.name)} (${fmt(m.price)})</option>`).join("");
+      sel.dataset.v = S.menu.map(m => m.id + m.name).join();
+      if (keep && S.menu.some(m => m.id === keep)) sel.value = keep;
+    }
+    $("shPeople").innerHTML = S.people.map(x => `<button type="button" class="chip" aria-pressed="${shSel.includes(x.id)}" data-act="shpick" data-p="${x.id}">${esc(x.name)}</button>`).join("");
+    $("shPick").textContent = shSel.length ? `(${fq(shSel.length)} نفر)` : "";
+    const n = parseNum($("shCount").value), price = priceOf(sel.value);
+    $("shPreview").textContent = shSel.length && n > 0 ? `سهم هر نفر: ${fq(Math.round(n / shSel.length * 100) / 100)} از ${nameOf(sel.value)} = ${fmt(n / shSel.length * price)} ${unit()}` : "غذا، تعداد و آدم‌ها را انتخاب کن.";
+  }
+  function openShared(x) {
+    shEdit = x ? x.id : null; shSel = x ? x.people.slice() : [];
+    $("sharedForm").hidden = false; $("sharedOpen").hidden = true;
+    renderSharedForm();
+    $("shItem").value = x ? x.item : $("shItem").value;
+    $("shCount").value = fq(x ? x.count : 1);
+    $("shSave").textContent = x ? "ذخیره" : "ثبت";
+    renderSharedForm();
+  }
+  function closeShared() { $("sharedForm").hidden = true; $("sharedOpen").hidden = false; shEdit = null; shSel = []; }
+  const norm = s => toLatin(s).replace(/ي/g, "ی").replace(/ك/g, "ک").replace(/‌/g, "").toLowerCase();
+
+  function renderPeople() {
+    const box = $("people");
+    const list = S.people.filter(p => !query || norm(p.name).includes(norm(query)));
+    if (!S.people.length) { box.innerHTML = '<div class="empty">هنوز کسی اضافه نشده. از «منو و افراد» دوستانت را اضافه کن.</div>'; return; }
+    if (!list.length) { box.innerHTML = '<div class="empty">کسی با این اسم پیدا نشد.</div>'; return; }
+    if (list.length === 1 && query) openId = list[0].id;
+    box.innerHTML = list.map(p => {
+      const open = p.id === openId;
+      const c = count(p.id);
+      const items = open ? `<div class="items">${S.menu.length ? S.menu.map(m => {
+        const n = q(p.id, m.id);
+        return `<div class="item${n ? " has" : ""}${n < 0 ? " neg" : ""}">
+          <div class="iname"><b>${esc(m.name)}</b><span class="num">${fmt(m.price)}${n ? " × " + fq(n) + " = " + fmt(n * m.price) : ""}</span></div>
+          <div class="stepper">
+            <button type="button" aria-label="کم کردن ${esc(m.name)}" data-act="dec" data-p="${p.id}" data-i="${m.id}">−</button>
+            <input id="q-${p.id}-${m.id}" class="num" inputmode="decimal" value="${fq(n)}" data-p="${p.id}" data-i="${m.id}" aria-label="تعداد ${esc(m.name)}">
+            <button type="button" class="plus" aria-label="اضافه کردن ${esc(m.name)}" data-act="inc" data-p="${p.id}" data-i="${m.id}">+</button>
+          </div></div>`;
+      }).join("") : '<div class="empty">منو خالی است.</div>'}
+        ${shares(p.id).map(x => `<div class="shared-line num">سهم از غذای مشترک: ${fq(Math.round(per(x) * 100) / 100)} ${esc(nameOf(x.item))} (${fq(x.count)} تا بین ${fq(x.people.length)} نفر) = ${fmt(per(x) * priceOf(x.item))}</div>`).join("")}
+        <div class="row-actions"><button type="button" class="btn small" data-act="clearp" data-p="${p.id}">صفر کردن سفارش ${esc(p.name)}</button></div></div>` : "";
+      return `<div class="person${open ? " open" : ""}">
+        <button type="button" class="person-head" data-act="toggle" data-p="${p.id}" aria-expanded="${open}">
+          <span class="avatar">${esc(p.name.trim().charAt(0) || "؟")}</span>
+          <span class="pname">${esc(p.name)}<small>${c ? fq(c) + " آیتم" : "هنوز چیزی ثبت نشده"}${subtotal(p.id) < 0 ? " · بستانکار" : ""}</small></span>
+          <span class="ptotal num">${fmt(share(p.id))}<small>${unit()}</small></span>
+          <svg class="chev" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M6 9l6 6 6-6"/></svg>
+        </button>${items}</div>`;
+    }).join("");
+  }
+
+  function totals() {
+    const sub = S.people.reduce((a, p) => a + subtotal(p.id), 0);
+    const withTip = sub + S.people.reduce((a, p) => a + tipOf(p.id), 0);
+    const collected = S.people.reduce((a, p) => a + share(p.id), 0);
+    return { sub, withTip, collected };
+  }
+
+  function renderSummary() {
+    const t = totals();
+    const rows = S.people.slice().sort((a, b) => share(b.id) - share(a.id));
+    $("summaryList").innerHTML = rows.length ? rows.map(p => `<div class="srow"><span>${esc(p.name)}</span><b class="num">${fmt(share(p.id))} ${unit()}</b></div>`).join("") : '<div class="empty">کسی نیست.</div>';
+    $("summaryMeta").innerHTML = `
+      <div><span>جمع غذاها</span><span class="num">${fmt(t.sub)}</span></div>
+      <div><span>${tipText()}</span><span class="num">${fmt(t.withTip - t.sub)}</span></div>
+      <div class="big"><span>جمع صورتحساب</span><span class="num">${fmt(t.withTip)}</span></div>
+      ${S.round > 0 ? `<div><span>جمع پولی که جمع می‌شود (با گرد کردن)</span><span class="num">${fmt(t.collected)}</span></div>` : ""}`;
+    const lines = ["دونگ امشب", ...rows.filter(p => share(p.id) > 0).map(p => `${p.name}: ${fmt(share(p.id))} ${unit()}`), "", `جمع کل با انعام: ${fmt(t.withTip)} ${unit()}`];
+    $("copyText").value = lines.join("\n");
+  }
+
+  function tipText() { return S.tipMode === "flat" ? `انعام (${fmt(S.tip || 0)} برای هر نفر)` : `انعام ${fmt(S.tip || 0)}٪`; }
+
+  function renderSetup() {
+    document.querySelectorAll("[name=tipMode]").forEach(r => r.checked = r.value === (S.tipMode || "percent"));
+    $("tipLabel").textContent = S.tipMode === "flat" ? "مبلغ انعام برای هر نفر" : "درصد انعام / سرویس";
+    if (document.activeElement !== $("unit")) $("unit").value = unit();
+    if (document.activeElement !== $("tip")) $("tip").value = fmt(S.tip || 0);
+    if (document.activeElement !== $("round")) $("round").value = fmt(S.round || 0);
+    $("menuEdit").innerHTML = S.menu.map(m => `<div class="edit-row">
+      <input id="mn-${m.id}" value="${esc(m.name)}" data-edit="mname" data-i="${m.id}" aria-label="اسم غذا">
+      <input id="mp-${m.id}" class="num" inputmode="numeric" value="${fmt(m.price)}" data-edit="mprice" data-i="${m.id}" aria-label="قیمت">
+      <button type="button" class="x" data-act="delitem" data-i="${m.id}" aria-label="حذف ${esc(m.name)}">×</button></div>`).join("") || '<div class="empty">منو خالی است.</div>';
+    $("peopleEdit").innerHTML = S.people.map(p => `<div class="edit-row p">
+      <input id="pn-${p.id}" value="${esc(p.name)}" data-edit="pname" data-p="${p.id}" aria-label="اسم">
+      <button type="button" class="x" data-act="delperson" data-p="${p.id}" aria-label="حذف ${esc(p.name)}">×</button></div>`).join("") || '<div class="empty">کسی نیست.</div>';
+  }
+
+  function renderBar() {
+    const t = totals();
+    $("barTotal").textContent = fmt(t.withTip) + " " + unit();
+    $("barSub").textContent = fmt(t.sub);
+    $("exampleNote").hidden = !S.example;
+  }
+
+  function render() {
+    ["people", "summary", "setup"].forEach(v => {
+      $("view-" + v).hidden = v !== view;
+      $("tab-" + v).setAttribute("aria-selected", v === view);
+    });
+    $("searchWrap").hidden = view !== "people";
+    if (view === "people") { renderPeople(); renderShared(); }
+    if (view === "summary") renderSummary();
+    if (view === "setup") renderSetup();
+    renderBar();
+  }
+  const touch = () => { S.example = false; save(); };
+
+  function setQty(pid, iid, n) {
+    n = Math.round(n * 100) / 100;
+    S.qty[pid] = S.qty[pid] || {};
+    if (n) S.qty[pid][iid] = n; else delete S.qty[pid][iid];
+    touch();
+  }
+
+  let toastT;
+  function toast(msg) { const t = $("toast"); t.textContent = msg; t.hidden = false; clearTimeout(toastT); toastT = setTimeout(() => t.hidden = true, 1800); }
+
+  document.querySelectorAll(".tabs button").forEach(b => b.addEventListener("click", () => { view = b.dataset.view; render(); window.scrollTo(0, 0); }));
+  $("search").addEventListener("input", e => { query = e.target.value; if (!query) openId = null; renderPeople(); });
+
+  let pendingConfirm = null;
+  document.addEventListener("click", e => {
+    const b = e.target.closest("[data-act]"); if (!b) return;
+    const { act, p, i } = b.dataset;
+    if (act === "shpick") { shSel = shSel.includes(p) ? shSel.filter(x => x !== p) : shSel.concat(p); renderSharedForm(); return; }
+    if (act === "shedit") { openShared((S.shared || []).find(x => x.id === b.dataset.s)); return; }
+    if (act === "shdel") { S.shared = (S.shared || []).filter(x => x.id !== b.dataset.s); touch(); }
+    if (act === "toggle") { openId = openId === p ? null : p; renderPeople(); return; }
+    if (act === "inc") { setQty(p, i, q(p, i) + 1); }
+    if (act === "dec") { const v = q(p, i); setQty(p, i, v > 0 ? Math.max(0, v - 1) : v - 1 >= 0 ? v - 1 : v); }
+    if (act === "half") { setQty(p, i, q(p, i) + 0.5); }
+    if (act === "clearp") { S.qty[p] = {}; touch(); }
+    if (act === "delitem") { S.menu = S.menu.filter(m => m.id !== i); for (const k in S.qty) delete S.qty[k][i]; touch(); }
+    if (act === "delperson") { S.people = S.people.filter(x => x.id !== p); delete S.qty[p]; S.shared = (S.shared || []).map(x => ({ ...x, people: x.people.filter(y => y !== p) })).filter(x => x.people.length); touch(); }
+    render();
+  });
+  document.addEventListener("change", e => {
+    const el = e.target;
+    if (el.matches(".stepper input")) { setQty(el.dataset.p, el.dataset.i, parseNum(el.value)); render(); }
+    if (el.dataset.edit === "mname") { const m = S.menu.find(x => x.id === el.dataset.i); if (m && el.value.trim()) m.name = el.value.trim(); touch(); }
+    if (el.dataset.edit === "mprice") { const m = S.menu.find(x => x.id === el.dataset.i); if (m) m.price = parseNum(el.value); touch(); renderSetup(); renderBar(); }
+    if (el.dataset.edit === "pname") { const x = S.people.find(y => y.id === el.dataset.p); if (x && el.value.trim()) x.name = el.value.trim(); touch(); }
+  });
+  document.addEventListener("focusin", e => { if (e.target.matches(".stepper input")) e.target.select(); });
+
+  $("tip").addEventListener("change", e => { S.tip = parseNum(e.target.value); touch(); render(); });
+  document.querySelectorAll("[name=tipMode]").forEach(r => r.addEventListener("change", () => { S.tipMode = r.value; touch(); render(); }));
+  $("unit").addEventListener("change", e => { S.unit = e.target.value.trim() || "تومان"; touch(); render(); });
+  $("round").addEventListener("change", e => { S.round = Math.max(0, parseNum(e.target.value)); touch(); render(); });
+
+  function addItem() {
+    const name = $("newItemName").value.trim(); if (!name) { $("newItemName").focus(); return; }
+    S.menu.push({ id: uid(), name, price: parseNum($("newItemPrice").value) });
+    $("newItemName").value = ""; $("newItemPrice").value = ""; $("newItemName").focus(); touch(); render();
+  }
+  function addPerson() {
+    const name = $("newPerson").value.trim(); if (!name) { $("newPerson").focus(); return; }
+    S.people.push({ id: uid(), name }); $("newPerson").value = ""; $("newPerson").focus(); touch(); render();
+  }
+  $("addItem").addEventListener("click", addItem);
+  $("addPerson").addEventListener("click", addPerson);
+  $("newItemPrice").addEventListener("keydown", e => { if (e.key === "Enter") addItem(); });
+  $("newItemName").addEventListener("keydown", e => { if (e.key === "Enter") $("newItemPrice").focus(); });
+  $("newPerson").addEventListener("keydown", e => { if (e.key === "Enter") addPerson(); });
+
+  function confirmStep(btn, label, run) {
+    const msg = $("confirmMsg");
+    if (pendingConfirm === btn.id) { pendingConfirm = null; msg.hidden = true; run(); return; }
+    pendingConfirm = btn.id; msg.textContent = label + " — برای تأیید دوباره بزن."; msg.hidden = false;
+    setTimeout(() => { if (pendingConfirm === btn.id) { pendingConfirm = null; msg.hidden = true; } }, 4000);
+  }
+  $("resetQty").addEventListener("click", e => confirmStep(e.currentTarget, "همه‌ی سفارش‌ها صفر می‌شوند", () => { S.qty = {}; S.shared = []; touch(); toast("سفارش‌ها صفر شد"); render(); }));
+  $("resetAll").addEventListener("click", e => confirmStep(e.currentTarget, "منو، اسم‌ها و سفارش‌ها همه پاک می‌شوند", () => { S = { menu: [], people: [], qty: {}, tip: S.tip, tipMode: S.tipMode, unit: S.unit, round: S.round, example: false }; save(); toast("همه چیز پاک شد"); render(); }));
+  $("clearExample").addEventListener("click", () => { S.qty = {}; S.shared = []; touch(); toast("آماده برای سفارش جدید"); render(); });
+
+  $("copyBtn").addEventListener("click", () => {
+    const txt = $("copyText").value;
+    const legacy = () => {
+      const ta = $("copyText");
+      ta.removeAttribute("readonly"); ta.focus(); ta.select(); ta.setSelectionRange(0, txt.length);
+      let ok = false; try { ok = document.execCommand("copy"); } catch (e) {}
+      ta.setAttribute("readonly", ""); ta.blur(); window.getSelection && window.getSelection().removeAllRanges();
+      toast(ok ? "کپی شد" : "کپی نشد؛ متن را نگه دار و Copy را بزن");
+      if (!ok) { ta.focus(); ta.select(); }
+    };
+    if (navigator.clipboard && window.isSecureContext) {
+      navigator.clipboard.writeText(txt).then(() => toast("کپی شد"), legacy);
+    } else legacy();
+  });
+
+  $("sharedOpen").addEventListener("click", () => openShared(null));
+  $("shCancel").addEventListener("click", closeShared);
+  $("shItem").addEventListener("change", renderSharedForm);
+  $("shCount").addEventListener("input", renderSharedForm);
+  $("shCount").addEventListener("focus", e => e.target.select());
+  $("shInc").addEventListener("click", () => { $("shCount").value = fq(parseNum($("shCount").value) + 1); renderSharedForm(); });
+  $("shDec").addEventListener("click", () => { $("shCount").value = fq(Math.max(1, parseNum($("shCount").value) - 1)); renderSharedForm(); });
+  $("shSave").addEventListener("click", () => {
+    const n = parseNum($("shCount").value), item = $("shItem").value;
+    if (!item || n <= 0 || !shSel.length) { $("shPreview").textContent = "غذا، تعداد و دست‌کم یک نفر را انتخاب کن."; return; }
+    S.shared = S.shared || [];
+    const rec = { id: shEdit || uid(), item, count: n, people: shSel.slice() };
+    const i = S.shared.findIndex(x => x.id === shEdit);
+    if (i >= 0) S.shared[i] = rec; else S.shared.push(rec);
+    touch(); closeShared(); toast("غذای مشترک ثبت شد"); render();
+  });
+
+  render();
+})();
+</script>
+<script>if ("serviceWorker" in navigator) navigator.serviceWorker.register("sw.js");</script>
+</body>
+</html>
