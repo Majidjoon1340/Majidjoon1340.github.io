@@ -375,7 +375,7 @@ body{margin:0}[hidden]{display:none!important}
       const items = open ? `<div class="items">${S.menu.length ? S.menu.map(m => {
         const n = q(p.id, m.id);
         return `<div class="item${n ? " has" : ""}${n < 0 ? " neg" : ""}">
-          <div class="iname"><b>${esc(m.name)}</b><span class="num">${fmt(m.price)}${n ? " × " + fq(n) + " = " + fmt(n * m.price) : ""}</span></div>
+          <div class="iname"><b>${esc(m.name)}</b><span class="num"><bdi dir="ltr">${fmt(m.price)}</bdi>${n ? " × <bdi dir='ltr'>" + fq(n) + "</bdi> = <bdi dir='ltr'>" + fmt(n * m.price) + "</bdi>" : ""}</span></div>
           <div class="stepper">
             <button type="button" aria-label="کم کردن ${esc(m.name)}" data-act="dec" data-p="${p.id}" data-i="${m.id}">−</button>
             <input id="q-${p.id}-${m.id}" class="num" inputmode="decimal" value="${fq(n)}" data-p="${p.id}" data-i="${m.id}" aria-label="تعداد ${esc(m.name)}">
