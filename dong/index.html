@@ -294,6 +294,7 @@ body{margin:0}[hidden]{display:none!important}
         </div>
         <p id="groupMsg" class="warnbox" hidden></p>
       </div>
+      <p class="hint" style="text-align:center">نسخه‌ی ۱۱</p>
     </div>
   </section>
 </div>
@@ -636,6 +637,6 @@ body{margin:0}[hidden]{display:none!important}
   render();
 })();
 </script>
-<script>if ("serviceWorker" in navigator) navigator.serviceWorker.register("sw.js");</script>
+<script>if ("serviceWorker" in navigator) { const had = !!navigator.serviceWorker.controller; let done = false; navigator.serviceWorker.addEventListener("controllerchange", () => { if (had && !done) { done = true; location.reload(); } }); navigator.serviceWorker.register("sw.js", { updateViaCache: "none" }).then(r => r.update()).catch(() => {}); }</script>
 </body>
 </html>
